@@ -1,1 +1,378 @@
-<h1>Hallo</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dexor X — External Executor</title>
+  <link rel="preconnect" href="https:
+  <link href="https:
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black:   #08080d;
+      --dark:    #0d0d14;
+      --card:    #111119;
+      --line:    rgba(255 255 255 / .06);
+      --line2:   rgba(255 255 255 / .10);
+      --purple:  #7b68ee;
+      --purple2: #a89cf7;
+      --teal:    #2dd4bf;
+      --text:    #e2e2f0;
+      --muted:   #6b6b90;
+      --faint:   #2c2c42;
+      --sans:    'Geist', system-ui, sans-serif;
+      --mono:    'Geist Mono', 'Fira Code', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--black);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 9000; pointer-events: none;
+      opacity: .025;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http:
+    }
+
+    ::-webkit-scrollbar       { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--black); }
+    ::-webkit-scrollbar-thumb { background: var(--faint); border-radius: 2px; }
+
+    
+    nav {
+      position: fixed; inset: 0 0 auto; z-index: 800;
+      height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 32px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(8 8 13 / .85);
+      backdrop-filter: blur(16px);
+    }
+    .nav-brand { display: flex; align-items: center; gap: 9px; text-decoration: none; color: var(--text); }
+    .nav-icon { width: 28px; height: 28px; border-radius: 7px; background: var(--purple); display: grid; place-items: center; flex-shrink: 0; }
+    .nav-icon svg { width: 14px; height: 14px; }
+    .nav-wordmark { font-size: .875rem; font-weight: 500; letter-spacing: .04em; }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .status-pill {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 11px; border-radius: 999px;
+      border: 1px solid rgba(45 212 191 / .2);
+      font-family: var(--mono); font-size: .7rem; color: var(--teal); letter-spacing: .05em;
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 6px var(--teal); animation: pulse 2.4s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+    .btn-dl { padding: 7px 18px; border-radius: 7px; background: var(--purple); color: #fff; font-size: .8rem; font-weight: 400; letter-spacing: .03em; text-decoration: none; transition: background .15s; }
+    .btn-dl:hover { background: #6a58e0; }
+
+    
+    .hero {
+      min-height: 100dvh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 80px 24px 60px;
+      position: relative; overflow: hidden; text-align: center; gap: 40px;
+    }
+    .hero::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(123 104 238 / .045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(123 104 238 / .045) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: radial-gradient(ellipse 85% 65% at 50% 35%, black 10%, transparent 72%);
+    }
+    .hero-glow {
+      position: absolute; top: -160px; left: 50%; transform: translateX(-50%);
+      width: 720px; height: 520px;
+      background: radial-gradient(ellipse at center, rgba(123 104 238 / .16) 0%, transparent 65%);
+      pointer-events: none;
+    }
+
+    
+    .window {
+      position: relative; z-index: 2;
+      width: min(520px, 92vw);
+      border-radius: 12px; overflow: hidden;
+      border: 1px solid var(--line2);
+      background: var(--dark);
+      box-shadow:
+        0 0 0 1px rgba(255 255 255 / .04) inset,
+        0 32px 80px rgba(0 0 0 / .7),
+        0 0 60px rgba(123 104 238 / .08);
+      animation: hover 8s ease-in-out infinite;
+    }
+    @keyframes hover { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+
+    .win-bar {
+      display: flex; align-items: center; gap: 6px;
+      padding: 10px 14px; border-bottom: 1px solid var(--line);
+      background: rgba(255 255 255 / .015);
+    }
+    .wdot { width: 10px; height: 10px; border-radius: 50%; }
+    .wdot.r{background:#ff5f56} .wdot.y{background:#ffbd2d} .wdot.g{background:#26c840}
+    .win-title { flex:1; text-align:center; font-family:var(--mono); font-size:.63rem; color:var(--faint); letter-spacing:.06em; }
+    .win-chip { font-family:var(--mono); font-size:.58rem; color:var(--teal); border:1px solid rgba(45 212 191/.18); background:rgba(45 212 191/.05); padding:2px 8px; border-radius:4px; letter-spacing:.05em; }
+
+    
+    .win-tabs {
+      display: flex; border-bottom: 1px solid var(--line);
+      background: rgba(255 255 255 / .01);
+    }
+    .win-tab {
+      padding: 7px 16px;
+      font-family: var(--mono); font-size: .62rem; font-weight: 300;
+      color: var(--faint); letter-spacing: .04em;
+      border-right: 1px solid var(--line);
+      cursor: default;
+    }
+    .win-tab.active { color: var(--text); border-bottom: 2px solid var(--purple); margin-bottom: -1px; }
+
+    .win-body { display: flex; min-height: 200px; }
+    .win-gutter {
+      width: 40px; border-right: 1px solid var(--line); background: rgba(255 255 255 / .008);
+      padding: 16px 0; display: flex; flex-direction: column; align-items: center; gap: 11px;
+    }
+    .gutter-dot { width: 13px; height: 13px; border-radius: 3px; }
+    .gutter-dot.hi { background: rgba(123 104 238 / .5); }
+    .gutter-dot.lo { background: rgba(255 255 255 / .05); }
+
+    
+    .win-log {
+      flex: 1; padding: 14px 18px;
+      font-family: var(--mono); font-size: .68rem; font-weight: 300; line-height: 2;
+    }
+    .log-ts   { color: var(--faint); }
+    .log-ok   { color: #34d399; }
+    .log-warn { color: #fbbf24; }
+    .log-info { color: #60a5fa; }
+    .log-val  { color: var(--purple2); }
+    .log-dim  { color: #28284a; }
+    .caret { display:inline-block; width:2px; height:.8em; background:var(--purple2); vertical-align:text-bottom; animation:blink 1.1s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    .win-footer {
+      display: flex; gap: 7px; padding: 9px 12px;
+      border-top: 1px solid var(--line); background: rgba(0 0 0 / .15);
+    }
+    .win-input { flex:1; height:26px; border-radius:5px; background:rgba(123 104 238/.07); border:1px solid rgba(123 104 238/.14); display:flex; align-items:center; padding:0 9px; }
+    .win-input span { font-family:var(--mono); font-size:.58rem; color:var(--faint); }
+    .win-run { padding:4px 13px; border-radius:5px; background:var(--purple); color:#fff; font-size:.6rem; font-weight:400; letter-spacing:.04em; }
+
+    
+    .hero-text { position: relative; z-index: 2; }
+    .hero-text h1 { font-size:clamp(2rem,4.5vw,3.6rem); font-weight:400; line-height:1.12; letter-spacing:-.025em; }
+    .hero-text h1 strong { font-weight:500; background:linear-gradient(110deg,var(--purple) 0%,var(--purple2) 60%,#f0abfc 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .hero-text p { margin-top:14px; font-size:.9rem; color:var(--muted); font-weight:300; }
+
+    
+    .stats {
+      position: relative; z-index: 2;
+      display: grid; grid-template-columns: repeat(4,1fr);
+      width: min(580px, 90vw);
+      border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+      background: var(--card);
+    }
+    .stat { padding:22px 12px 18px; text-align:center; border-right:1px solid var(--line); transition:background .2s; }
+    .stat:last-child { border-right:none; }
+    .stat:hover { background:rgba(123 104 238/.04); }
+    .stat-n { display:block; font-size:1.9rem; font-weight:400; line-height:1; background:linear-gradient(150deg,#fff 0%,var(--purple2) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:5px; }
+    .stat-l { font-family:var(--mono); font-size:.6rem; font-weight:300; color:var(--muted); letter-spacing:.1em; text-transform:uppercase; }
+
+    .ud-badge { position:relative; z-index:2; display:inline-flex; align-items:center; gap:8px; padding:8px 20px; border-radius:999px; border:1px solid rgba(45 212 191/.18); background:rgba(45 212 191/.04); }
+    .ud-dot { width:6px; height:6px; border-radius:50%; background:var(--teal); box-shadow:0 0 8px var(--teal); animation:pulse 2.4s ease-in-out infinite; }
+    .ud-badge span { font-family:var(--mono); font-size:.68rem; font-weight:300; color:var(--teal); letter-spacing:.09em; }
+
+    
+    .section-label { text-align:center; padding:72px 24px 16px; font-family:var(--mono); font-size:.65rem; font-weight:300; color:var(--faint); letter-spacing:.14em; text-transform:uppercase; }
+    .faq-section { max-width:620px; margin:0 auto; padding:12px 24px 100px; }
+    .faq-section h2 { text-align:center; font-size:clamp(1.5rem,2.5vw,1.9rem); font-weight:400; letter-spacing:-.02em; margin-bottom:28px; }
+    .faq-list { display:flex; flex-direction:column; gap:6px; }
+    .faq-item { border:1px solid var(--line); border-radius:9px; overflow:hidden; background:var(--card); transition:border-color .2s; }
+    .faq-item.open { border-color:rgba(123 104 238/.3); }
+    .faq-q { width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 20px; background:none; border:none; color:var(--text); font-family:var(--sans); font-size:.88rem; font-weight:400; text-align:left; cursor:pointer; }
+    .faq-q span { flex:1; }
+    .faq-chevron { width:18px; height:18px; flex-shrink:0; border-radius:4px; border:1px solid var(--line2); display:grid; place-items:center; font-size:.5rem; color:var(--muted); transition:transform .28s, color .2s; }
+    .faq-item.open .faq-chevron { transform:rotate(180deg); color:var(--purple2); }
+    .faq-body { max-height:0; overflow:hidden; transition:max-height .35s ease; }
+    .faq-item.open .faq-body { max-height:160px; }
+    .faq-body-inner { padding:0 20px 17px; font-size:.83rem; font-weight:300; color:var(--muted); line-height:1.8; }
+    .faq-body-inner a { color:var(--purple2); text-decoration:none; }
+    .faq-body-inner a:hover { text-decoration:underline; }
+
+    
+    .cta { padding:80px 24px 120px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:20px; position:relative; overflow:hidden; }
+    .cta::before { content:''; position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse 60% 50% at 50% 70%,rgba(123 104 238/.09) 0%,transparent 70%); }
+    .cta-mark { position:relative; z-index:2; width:64px; height:64px; border-radius:16px; background:var(--purple); display:grid; place-items:center; box-shadow:0 0 36px rgba(123 104 238/.45); animation:hover 8s ease-in-out infinite; }
+    .cta-mark svg { width:28px; height:28px; }
+    .cta h2 { position:relative; z-index:2; font-size:clamp(2.8rem,6.5vw,5.5rem); font-weight:400; letter-spacing:-.03em; line-height:.95; background:linear-gradient(140deg,#fff 0%,var(--purple2) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .cta-btn { position:relative; z-index:2; display:inline-flex; align-items:center; gap:8px; padding:11px 36px; border-radius:9px; background:var(--purple); color:#fff; font-size:.85rem; font-weight:400; letter-spacing:.03em; text-decoration:none; box-shadow:0 0 32px rgba(123 104 238/.35); transition:background .15s,box-shadow .2s; }
+    .cta-btn:hover { background:#6a58e0; box-shadow:0 0 52px rgba(123 104 238/.5); }
+
+    
+    footer { border-top:1px solid var(--line); padding:28px 32px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; }
+    .f-brand { display:flex; align-items:center; gap:9px; text-decoration:none; }
+    .f-icon { width:26px; height:26px; border-radius:6px; background:var(--purple); display:grid; place-items:center; }
+    .f-icon svg { width:12px; height:12px; }
+    .f-name { font-size:.82rem; font-weight:400; color:var(--text); letter-spacing:.05em; }
+    .f-links { display:flex; flex-direction:column; gap:4px; }
+    .f-links-title { font-family:var(--mono); font-size:.58rem; font-weight:300; color:var(--faint); letter-spacing:.12em; text-transform:uppercase; margin-bottom:3px; }
+    .f-links a { font-family:var(--mono); font-size:.74rem; font-weight:300; color:var(--muted); text-decoration:none; transition:color .18s; }
+    .f-links a:hover { color:var(--text); }
+    .f-copy { font-family:var(--mono); font-size:.63rem; font-weight:300; color:var(--faint); }
+
+    .reveal { opacity:0; transform:translateY(14px); transition:opacity .55s ease,transform .55s ease; }
+    .reveal.in { opacity:1; transform:none; }
+
+    @media (max-width:560px) {
+      nav { padding:0 16px; }
+      .status-pill { display:none; }
+      footer { padding:24px 16px; flex-direction:column; align-items:flex-start; }
+      .stats { grid-template-columns:repeat(2,1fr); }
+      .stat:nth-child(2) { border-right:none; }
+      .stat:nth-child(3),
+      .stat:nth-child(4) { border-top:1px solid var(--line); }
+      .stat:nth-child(4) { border-right:none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-brand">
+    <div class="nav-icon" style="background:transparent;box-shadow:none;overflow:hidden;">
+      <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAJSAc4DASIAAhEBAxEB/8QAHAABAAIDAQEBAAAAAAAAAAAAAAYHAgQFAwEI/8QAQRAAAQMCAgYHBwIFBAAHAAAAAAECAwQFBhESITFBUWEHExQicYGRIzJCUqGxwRXRJENicuEzU7LwRXOCksLS8f/EABwBAQABBQEBAAAAAAAAAAAAAAAGAwQFBwgCAf/EAEARAAIBAgMFBQUIAgEDAwUAAAABAgMEBRExBiFBUWESEyJxgQcykbHRFBUjQqHB4fBScoIzYpI00vFDorLC4v/aAAwDAQACEQMRAD8A/GQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABKuje0duuy1szM4KXJUzTU567PTb6EXjY6SRsbGq5zlRGom1VUuXDNsbaLNBRoidYiaUqpveu39vIxWLXXcUeytZbvqT32e4D954mq1Rfh0spPq/yr47/AE6nTNeahopv9ajp5P740X7obAIgpNaHRdSlCosppNdTlTYdscvvWqlT+xmj9jQqME2CXPQgmg/8uVfzmSQFeF3Xh7s38TF19n8KuP8Aq20H/wAVn8csyE1PR7Ruz7PcZ4+HWMR/2yObUdH1xbn2etpZE/rRzV+ylkAuoYtdR/Nn6IwVz7PsAr
+    </div>
+    <span class="nav-wordmark">Dexor X</span>
+  </a>
+  <div class="nav-right">
+    <div class="status-pill">
+      <div class="status-dot"></div>
+      Undetected
+    </div>
+    <a href="#download" class="btn-dl">Download</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-glow"></div>
+
+  <div style="position:relative;z-index:2;width:min(820px,90vw);margin-bottom:40px;animation:hover 8s ease-in-out infinite;filter:drop-shadow(0 24px 60px rgba(0,0,0,0.85)) drop-shadow(0 0 50px rgba(123,104,238,0.2));border-radius:12px;overflow:hidden;">
+    <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAJtA7kDASIAAhEBAxEB/8QAHQABAAEFAQEBAAAAAAAAAAAAAAUBAgQGBwgDCf/EAFYQAAEDAQMDDQsKBAUDBAEFAAABAgMEBQYRE1XREhQVFiExUVJTkZOh0gcIFzdUdJWipLKzIjM2QXJ1krHT1DI0YYE1Y3Fz4SNClIKjweJiJCVDRWT/xAAbAQEBAQEBAQEBAAAAAAAAAAAAAQIDBAUGB
+  </div>
+
+  <div class="hero-text">
+    <h1>The Best <strong>Free Executor</strong><br>for Roblox.</h1>
+    <p>No key system. Always free.</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span class="stat-n">100%</span><span class="stat-l">UNC</span></div>
+    <div class="stat"><span class="stat-n">94%</span><span class="stat-l">sUNC</span></div>
+    <div class="stat"><span class="stat-n">0</span><span class="stat-l">Detections</span></div>
+    <div class="stat"><span class="stat-n">Free</span><span class="stat-l">Always</span></div>
+  </div>
+
+  <div class="ud-badge">
+    <div class="ud-dot"></div>
+    <span>Undetected · last verified today</span>
+  </div>
+</section>
+
+<p class="section-label">We've got you covered</p>
+
+<div class="faq-section">
+  <h2>Frequently Asked Questions</h2>
+  <div class="faq-list">
+
+    <div class="faq-item open reveal">
+      <button class="faq-q" onclick="toggle(this)">
+        <span>What's the official Discord?</span>
+        <div class="faq-chevron">▼</div>
+      </button>
+      <div class="faq-body"><div class="faq-body-inner">
+        Our official Discord is <a href="https:
+      </div></div>
+    </div>
+
+    <div class="faq-item reveal">
+      <button class="faq-q" onclick="toggle(this)">
+        <span>How much sUNC / UNC?</span>
+        <div class="faq-chevron">▼</div>
+      </button>
+      <div class="faq-body"><div class="faq-body-inner">
+        Dexor X scores 100% UNC and 94% sUNC. We keep pushing both numbers up with every release.
+      </div></div>
+    </div>
+
+    <div class="faq-item reveal">
+      <button class="faq-q" onclick="toggle(this)">
+        <span>Why is this free?</span>
+        <div class="faq-chevron">▼</div>
+      </button>
+      <div class="faq-body"><div class="faq-body-inner">
+        No paywalls, no key systems, no subscriptions. It's a passion project — always has been, always will be free.
+      </div></div>
+    </div>
+
+    <div class="faq-item reveal">
+      <button class="faq-q" onclick="toggle(this)">
+        <span>How do I contact the developer?</span>
+        <div class="faq-chevron">▼</div>
+      </button>
+      <div class="faq-body"><div class="faq-body-inner">
+        Open a ticket in our <a href="https:
+      </div></div>
+    </div>
+
+  </div>
+</div>
+
+<section class="cta" id="download">
+  <div class="cta-mark" style="background:transparent;box-shadow:none;overflow:visible;">
+    <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAJSAc4DASIAAhEBAxEB/8QAHAABAAIDAQEBAAAAAAAAAAAAAAYHAgQFAwEI/8QAQRAAAQMCAgYHBwIFBAAHAAAAAAECAwQFBhESITFBUWEHExQicYGRIzJCUqGxwRXRJENicuEzU7LwRXOCksLS8f/EABwBAQABBQEBAAAAAAAAAAAAAAAGAwQFBwgCAf/EAEARAAIBAgMFBQUIAgEDAwUAAAABAgMEBRExBiFBUWESEyJxgQcykbHRFBUjQqHB4fBScoIzYpI00vFDorLC4v/aAAwDAQACEQMRAD8A/GQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABKuje0duuy1szM4KXJUzTU567PTb6EXjY6SRsbGq5zlRGom1VUuXDNsbaLNBRoidYiaUqpveu39vIxWLXXcUeytZbvqT32e4D954mq1Rfh0spPq/yr47/AE6nTNeahopv9ajp5P740X7obAIgpNaHRdSlCosppNdTlTYdscvvWqlT+xmj9jQqME2CXPQgmg/8uVfzmSQFeF3Xh7s38TF19n8KuP8Aq20H/wAVn8csyE1PR7Ruz7PcZ4+HWMR/2yObUdH1xbn2etpZE/rRzV+ylkAuoYtdR/Nn6IwVz7PsAr
+  </div>
+  <h2>Dexor X.</h2>
+  <a href="#" class="cta-btn">Download — it's free</a>
+</section>
+
+<footer>
+  <a href="#" class="f-brand">
+    <div class="f-icon" style="background:transparent;box-shadow:none;overflow:hidden;">
+      <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAJSAc4DASIAAhEBAxEB/8QAHAABAAIDAQEBAAAAAAAAAAAAAAYHAgQFAwEI/8QAQRAAAQMCAgYHBwIFBAAHAAAAAAECAwQFBhESITFBUWEHExQicYGRIzJCUqGxwRXRJENicuEzU7LwRXOCksLS8f/EABwBAQABBQEBAAAAAAAAAAAAAAAGAwQFBwgCAf/EAEARAAIBAgMFBQUIAgEDAwUAAAABAgMEBRExBiFBUWESEyJxgQcykbHRFBUjQqHB4fBScoIzYpI00vFDorLC4v/aAAwDAQACEQMRAD8A/GQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABKuje0duuy1szM4KXJUzTU567PTb6EXjY6SRsbGq5zlRGom1VUuXDNsbaLNBRoidYiaUqpveu39vIxWLXXcUeytZbvqT32e4D954mq1Rfh0spPq/yr47/AE6nTNeahopv9ajp5P740X7obAIgpNaHRdSlCosppNdTlTYdscvvWqlT+xmj9jQqME2CXPQgmg/8uVfzmSQFeF3Xh7s38TF19n8KuP8Aq20H/wAVn8csyE1PR7Ruz7PcZ4+HWMR/2yObUdH1xbn2etpZE/rRzV+ylkAuoYtdR/Nn6IwVz7PsAr
+    </div>
+    <span class="f-name">Dexor X</span>
+  </a>
+  <div class="f-links">
+    <div class="f-links-title">Socials</div>
+    <a href="#">Twitter (x)</a>
+    <a href="https:
+  </div>
+  <p class="f-copy">Copyright Dexor X Executor. All rights reserved.</p>
+</footer>
+
+<script>
+  function toggle(btn) {
+    const item = btn.closest('.faq-item')
+    const was  = item.classList.contains('open')
+    document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'))
+    if (!was) item.classList.add('open')
+  }
+
+  const io = new IntersectionObserver(entries => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        setTimeout(() => e.target.classList.add('in'), i * 55)
+        io.unobserve(e.target)
+      }
+    })
+  }, { threshold: .08 })
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el))
+</script>
+</body>
+</html>
